@@ -1,0 +1,31 @@
+{
+  "scene_id": "ramp",
+  "frame_id": "world",
+  "units": "m",
+  "bounds": [
+    [
+      -5,
+      5
+    ],
+    [
+      -2,
+      2
+    ],
+    [
+      -0.12,
+      0.7053079228338599
+    ]
+  ],
+  "sample_spacing_max_m": 0.04,
+  "points": 33811,
+  "body_clearance_m": 0.6,
+  "body_clearance_status": "debug reference only; not M20 calibrated",
+  "slope_deg": 10,
+  "step_count": 0,
+  "step_height_m": null,
+  "tread_depth_m": null,
+  "total_rise_m": 0.7053079228338599,
+  "pcd_sha256": "05a218b5156e7e31ec349e3926b54b61c81c132cf6db211f3db815cf2d1fe44c",
+  "truth_assisted_reference": true,
+  "physics_validated": false
+}

@@ -1,0 +1,39 @@
+{
+  "scene": "ramp",
+  "direction": "up",
+  "status": "reached_in_open_loop",
+  "manifest": {
+    "body_height_added_by_path_callback": 0.4,
+    "source_sha256": {
+      "src/planner/plan_manage/launch/run.launch": "4a8f69a82465acc9617a2a88e58fcc6e3fc21247de36d361057776c72a550013",
+      "src/planner/plan_manage/launch/simulator.xml": "a7e046a0c23553ab8c0af4bbf72d03cb84e9605905a67a7283c34a18dc2420b8",
+      "src/planner/plan_manage/launch/advanced_param.xml": "b313652cf4b09280577cadeb2dfdf86fb72ec7a849ca811a36cb036928c1ca1d",
+      "src/planner/plan_manage/src/scan_replan_fsm.cpp": "cd384a6d9503767ba9c880a6b6f33d5a583d0fe78c0a3d6df8299b51c0e490f2"
+    },
+    "method": "current_modified_checkout_truth_assisted_reference",
+    "robot_parameters": "existing Go2 defaults, NOT M20 calibrated",
+    "controller": "open_loop",
+    "navigation_mode": 3
+  },
+  "target_body_xyz": [
+    4.0,
+    0.0,
+    1.305308
+  ],
+  "limit_s": 60.0,
+  "arrival_tolerance_m": 0.2,
+  "hold_s": 1.0,
+  "physics_validated": false,
+  "host_local_date": "2026-11-04",
+  "reference_sent_s": 2.684947240999918,
+  "elapsed_after_reference_s": 14.432410778000303,
+  "odom": 1671,
+  "cloud": 47,
+  "bspline": 8,
+  "last": [
+    3.94389328110532,
+    0.0,
+    1.3002600464690908
+  ],
+  "reached": true
+}

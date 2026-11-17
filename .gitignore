@@ -1,0 +1,9 @@
+/configs/
+/runs/
+__pycache__/
+*.pyc
+*.bag
+*.bag.active
+*.zip
+*.tar.gz
+.env*

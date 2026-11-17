@@ -1,0 +1,74 @@
+diff --git a/src/planner/plan_manage/src/planner_manager.cpp b/src/planner/plan_manage/src/planner_manager.cpp
+index 7507af6..debb0f8 100644
+--- a/src/planner/plan_manage/src/planner_manager.cpp
++++ b/src/planner/plan_manage/src/planner_manager.cpp
+@@ -277,21 +277,48 @@ namespace scan_planner
+     UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
+     pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
+ 
+-    double ratio;
+-    bool flag_step_2_success = true;
+-    if (!pos.checkFeasibility(ratio, false))
++    bool trajectory_ok = false;
++    const int max_refine_attempts = 5;
++
++    for (int attempt = 0; attempt <= max_refine_attempts; ++attempt)
+     {
+-      cout << "Need to reallocate time." << endl;
++      pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_,
++                            pp_.feasibility_tolerance_);
++
++      double ratio = 1.0;
++      bool physical_ok = pos.checkFeasibility(ratio, false);
++      bool dynamic_ok = checkDynamicFeasibility(pos);
++
++      if (physical_ok && dynamic_ok)
++      {
++        trajectory_ok = true;
++        break;
++      }
++
++      if (attempt == max_refine_attempts)
++        break;
++
++      // Keep existing limits; allow more time before refining again.
++      if (!(ratio > 1.0))
++        ratio = 1.0;
++      ratio = std::max(ratio, 1.2);
++
++      ROS_WARN_STREAM("Retry trajectory refinement "
++                      << (attempt + 1) << "/"
++                      << max_refine_attempts
++                      << ", time ratio=" << ratio);
+ 
+       Eigen::MatrixXd optimal_control_points;
+-      flag_step_2_success = refineTrajAlgo(pos, start_end_derivatives, ratio, ts, optimal_control_points);
+-      if (flag_step_2_success)
+-        pos = UniformBspline(optimal_control_points, 3, ts);
++      if (!refineTrajAlgo(pos, start_end_derivatives, ratio,
++                          ts, optimal_control_points))
++        break;
++
++      pos = UniformBspline(optimal_control_points, 3, ts);
+     }
+ 
+-    if (!flag_step_2_success || !checkDynamicFeasibility(pos))
++    if (!trajectory_ok)
+     {
+-      printf("\033[34mThis refined trajectory is unsafe or dynamically infeasible. Skip publishing it.\n\033[0m");
++      ROS_WARN("Trajectory remains infeasible after bounded refinement.");
+       continuous_failures_count_++;
+       return false;
+     }
+@@ -539,6 +566,11 @@ namespace scan_planner
+     // double length = bspline.getLength(0.1);
+     // int seg_num = ceil(length / pp_.ctrl_pt_dist);
+ 
++    ROS_WARN_STREAM("Time scaling: control_points="
++                    << bspline.getControlPoint().cols()
++                    << ", knots=" << bspline.getKnot().rows()
++                    << ", duration=" << time_origin
++                    << ", ratio=" << ratio);
+     bspline.lengthenTime(ratio);
+     double duration = bspline.getTimeSum();
+     dt = duration / double(seg_num);

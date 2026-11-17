@@ -1,0 +1,31 @@
+{
+  "scene_id": "flat",
+  "frame_id": "world",
+  "units": "m",
+  "bounds": [
+    [
+      -5,
+      5
+    ],
+    [
+      -2,
+      2
+    ],
+    [
+      -0.12,
+      0.0
+    ]
+  ],
+  "sample_spacing_max_m": 0.04,
+  "points": 27451,
+  "body_clearance_m": 0.6,
+  "body_clearance_status": "debug reference only; not M20 calibrated",
+  "slope_deg": 0,
+  "step_count": 0,
+  "step_height_m": null,
+  "tread_depth_m": null,
+  "total_rise_m": 0.0,
+  "pcd_sha256": "e3435926c125a6384ec7ff8d376952c6fe00d6bf22c5aedc6262ef9ee8899b64",
+  "truth_assisted_reference": true,
+  "physics_validated": false
+}
