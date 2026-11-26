@@ -1,0 +1,110 @@
+# ==============================================================================
+# 电脑端轻量化仿真环境参数配置 (随机地图、激光雷达/深度渲染器、里程计可视化)
+# PC lightweight simulation parameters (mockamap, local sensing renderer, odom vis)
+#
+# 说明 / Note:
+#   - 仅在 is_real_world:=false (仿真模式) 下加载，真机模式不会启动这些节点。
+#   - 当 use_pcd_map:=true 时，由 map_pub 替代 mockamap_node 加载先验 PCD 点云地图。
+# ==============================================================================
+
+mockamap_node:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # 随机障碍物地形生成种子 / Random map generator seed
+    seed: 127
+    # 全局地图发布频率(Hz) / Global cloud publish frequency (Hz)
+    update_freq: 0.5
+    # 点云网格分辨率(m) / Point cloud grid resolution (m)
+    resolution: 0.1
+    # 随机地图 X/Y/Z 尺寸(m) / Random map dimensions (m)
+    x_length: 40
+    y_length: 40
+    z_length: 5
+    # 地图类型 (2 = 随机障碍物森林) / Map generation preset type
+    type: 2
+    # Perlin 噪声复杂度与填充率 / Noise complexity and obstacle fill ratio
+    complexity: 0.05
+    fill: 0.12
+    fractal: 1
+    attenuation: 0.1
+    # 障碍物柱体宽/高范围(m)与总数 / Obstacle width/height bounds (m) and count
+    width_min: 0.2
+    width_max: 0.8
+    height_min: 2.0
+    height_max: 2.0
+    obstacle_number: 500
+    # 地面表面采样分辨率(m) / Ground surface resolution (m)
+    surface_resolution: 0.05
+
+pcl_render_node:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # 仿真机器人命名空间前缀 / Simulated robot name prefix
+    quadrotor_name: quad_0
+    # 仿真传感器类型: lidar 或 depth / Simulated sensor type
+    sensor_type: lidar
+    # 输入机身里程计话题名 (在 simulator.launch.py 中重映射为 /quad_0/body_pose)
+    body_pose_topic: body_pose
+    # 地图哈希查找分辨率与尺寸(m) / Global map spatial hash resolution and dimensions (m)
+    map.resolution: 0.1
+    map.x_size: 40.0
+    map.y_size: 40.0
+    map.z_size: 5.0
+    # 激光雷达最大探测距离(m) / Max LiDAR sensing range (m)
+    sensing_horizon: 40.0
+    # 传感器点云渲染频率与位姿估计输出频率(Hz) / Cloud render and pose output rate (Hz)
+    sensing_rate: 10.0
+    estimation_rate: 10.0
+    # 极角分辨率(度)、水平视场角(360度)与垂直视场角(90度) / Angular resolution and FoV (deg)
+    polar_resolution: 0.2
+    yaw_fov: 360.0
+    vertical_fov: 90.0
+    # 最小有效探测距离(m)与输出降采样分辨率(m) / Min range & output voxel downsample (m)
+    min_raylength: 1.0
+    downsample_res: 0.1
+    # 仿真雷达安装俯仰角(度) / Simulated LiDAR pitch tilt (deg)
+    lidar_pitch: 45.0
+    # 雷达扫描线束模型开关 (1 = 启用 360° 与 mini-cf 扫描样式) / LiDAR scan pattern toggles
+    is_360lidar: 1
+    use_minicf_pattern: 1
+    use_avia_pattern: 0
+    use_vlp32_pattern: 0
+    use_os64_pattern: 0
+    use_os128_pattern: 0
+    # 仿真深度相机分辨率与内参 (sensor_type=depth 时生效) / Simulated depth camera intrinsics
+    cam_width: 640
+    cam_height: 480
+    cam_fx: 387.229248046875
+    cam_fy: 387.229248046875
+    cam_cx: 321.04638671875
+    cam_cy: 243.44969177246094
+    # 动态障碍物仿真开关与参数 (0 = 关闭) / Dynamic obstacle simulation parameters
+    dynamic.enable: 0
+    dynamic.object_size: 0.0
+    dynamic.object_count: 0
+    dynamic.mode: 0
+    dynamic.velocity: 0.0
+    # 仿真碰撞检测开关与半径(m) / Sim collision check toggle and radius (m)
+    collision_check.enable: 0
+    collision_check.range: 0.3
+    # 是否通过 /map_generator/global_cloud 话题接收全局地图 / Subscribe global map via topic
+    use_global_map_topic: true
+    # 备用直接加载的 PCD 路径 (当 use_global_map_topic=false 时使用) / Fallback direct PCD path
+    pcd_map_file: ''
+
+odom_visualization:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # TF 父/子坐标系名称 (发布 world -> base 实时变换供 RViz RobotModel 显示)
+    frame_id: world
+    child_frame_id: base
+    publish_tf: true
+    # 可视化模型缩放比例与轨迹颜色 RGBA / Visualization scale and trajectory RGBA color
+    robot_scale: 1.0
+    color.r: 0.0
+    color.g: 0.0
+    color.b: 0.0
+    color.a: 1.0

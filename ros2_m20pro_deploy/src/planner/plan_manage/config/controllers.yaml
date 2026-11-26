@@ -1,0 +1,86 @@
+# ==============================================================================
+# 轨迹跟踪控制器与运动学仿真参数配置
+# Trajectory tracking controllers (closed-loop / open-loop) & kinematic sim config
+#
+# 说明 / Note:
+#   - closed_loop_controller 订阅 /planning/bspline + body_pose，输出标准
+#     geometry_msgs/Twist (vx, vy, omega)，用于二维闭环仿真与真机底盘对接。
+#   - open_loop_controller 直接沿 3D B-spline 积分发布 body_pose，用于 3D 跨层仿真。
+#   - 严禁修改底层步态逻辑；真机速度限幅可根据测试安全需要在此 YAML 中下调。
+# ==============================================================================
+
+closed_loop_controller:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # 航向前瞻时间(s)，用于沿 B-spline 估计期望朝向 / Lookahead time for desired yaw (s)
+    time_forward: 0.8
+    # 航向角误差阈值(rad)，超过此值时先原地转向并冻结轨迹时间推进 / In-place turn threshold (rad)
+    heading_error_threshold: 0.8
+    # 平面位置比例跟踪增益 / Planar position feedback proportional gain
+    kp_pos: 0.8
+    # 偏航角比例跟踪增益 / Yaw angle feedback proportional gain
+    kp_yaw: 1.5
+    # 输出速度指令限幅: 前后线速度 max_vx (m/s)、横移速度 max_vy (m/s)、偏航角速度 max_vyaw (rad/s)
+    # [真机安全提示] 首次上真机平地/楼梯测试建议在 step1_navigation.yaml 中覆盖为更保守限幅
+    max_vx: 0.75
+    max_vy: 0.35
+    max_vyaw: 1.0
+    # 到达终点容差半径(m)，进入后速度归零 / Goal arrival tolerance radius (m)
+    finish_dist: 0.15
+
+open_loop_controller:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # 输出里程计的父/子坐标系名称 / Published odometry frame IDs
+    frame_id: world
+    child_frame_id: base
+    # 开环里程计发布频率(Hz) / Open-loop odometry publish rate (Hz)
+    publish_rate: 100.0
+    # 更新机身朝向所需的最小平面速度阈值(m/s) / Min planar speed to update heading (m/s)
+    yaw_min_speed: 0.05
+    # 轨迹结束后是否保持在终点位置持续发布里程计 / Hold final pose after trajectory ends
+    hold_final_position: true
+    # 仿真默认初始位姿 (会被 run.launch.py 的 init_x/init_y/init_z 参数覆盖)
+    init_x: -19.0
+    init_y: 1.0
+    init_z: 0.3
+    init_yaw: 0.0
+
+go2_kinematic_sim:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # 2D 闭环运动学仿真初始位姿 / Initial pose for 2D closed-loop kinematic sim
+    init_x: -19.0
+    init_y: 1.0
+    init_z: 0.3
+    init_yaw: 0.0
+    # 运动学速度限幅 / Velocity limits (m/s, rad/s)
+    max_vx: 0.75
+    max_vy: 0.35
+    max_vyaw: 1.0
+    # 速度指令超时清零时间(s)，防止失联继续运动 / Watchdog timeout to zero velocity (s)
+    cmd_timeout: 0.3
+    # 运动学积分频率(Hz) / Kinematic simulation integration rate (Hz)
+    sim_rate: 100.0
+    # 是否由运动学仿真发布 TF (在 run.launch.py 中由 odom_visualization 发布以避免重复)
+    publish_tf: true
+    frame_id: world
+    child_frame_id: base
+
+go2_gait_publisher:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+    # 仅用于 RViz 仿真显示的虚拟关节状态 (/joint_states) 发布频率与步态动画参数
+    # Virtual joint state visualization parameters (simulation visual only, NOT real robot control)
+    rate: 60.0
+    gait_frequency: 2.2
+    min_walk_speed: 0.05
+    max_walk_speed: 1.0
+    always_trot: false
+    hip_swing: 0.08
+    thigh_swing: 0.32
+    calf_swing: 0.42

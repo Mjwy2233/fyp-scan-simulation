@@ -1,0 +1,87 @@
+# ==============================================================================
+# 前后双激光雷达点云融合节点参数配置 (dual_lidar_fusion_node)
+# 适配实车：云深处 山猫 M20 Pro（前后双 96 线速腾 RSAIRY 激光雷达）
+# Dual-LiDAR point cloud fusion configuration for DeepRobotics Lynx M20 Pro
+#
+# 山猫 M20 Pro 两种点云接入路径说明 / Lynx M20 Pro LiDAR Input Modes:
+#   - 路径 A（外接主机通过 rslidar_sdk 接收组播 224.10.10.201:6691 & 224.10.10.202:6692）:
+#       启用本节点，订阅前/后两路独立话题，经 TF 统一至 base_link 并完整保留
+#       PointXYZIRT (ring + 逐点 timestamp) 供 Super-LIO 做运动去畸变与 SCAN-Planner 避障。
+#   - 路径 B（部署在机载 GOS 10.21.33.104，且 NOS 开启 multicast-relay.service）:
+#       山猫 M20 Pro 出厂默认 send_separately=false 时，原厂 /LIDAR/POINTS 已在驱动层
+#       完成前后雷达拼接并变换至 base_link（严禁随意改 send_separately=true 破坏原厂定位）。
+#       此时可在 step0/step1 中设 enable_dual_lidar_fusion:=false 直接订阅 /LIDAR/POINTS。
+# ==============================================================================
+
+dual_lidar_fusion:
+  ros__parameters:
+    # 是否使用仿真时钟 / Use simulated /clock topic
+    use_sim_time: false
+
+    # --------------------------------------------------------------------------
+    # 输入/输出话题配置 (Input / Output Topics)
+    # --------------------------------------------------------------------------
+    # 前激光雷达原始点云话题 (外接主机 rslidar_sdk 可按 config.yaml 设为 /rslidar_points_front)
+    front_topic: "/lidar_front/points"
+    # 后激光雷达原始点云话题 (外接主机 rslidar_sdk 示例为 /rslidar_points_rear)
+    rear_topic: "/lidar_rear/points"
+    # 融合后统一输出点云话题 (标准 32B XYZIRT，同时供 Super-LIO 与 SCAN-Planner 订阅)
+    output_topic: "/fused_lidar/points"
+
+    # --------------------------------------------------------------------------
+    # 坐标系与外参配置 (Frames & Static TF Extrinsics)
+    # --------------------------------------------------------------------------
+    # 融合后的目标本体坐标系 (山猫 M20 Pro 本体坐标系为 base_link)
+    target_frame: "base_link"
+    # 前/后雷达默认坐标系名 (若输入消息自带 header.frame_id 则优先使用消息头)
+    front_frame_id: "lidar_front_link"
+    rear_frame_id: "lidar_rear_link"
+    # 累积全局点云地图时查询的全局参考系 (Step 0 启用 map accumulation 时生效)
+    map_frame: "world"
+
+    # 是否由本节点自动发布 target_frame -> front/rear_frame_id 的静态 TF
+    publish_static_tf: true
+    # 前激光雷达相对 base_link 的 6-DoF 外参 [x(m), y(m), z(m), roll(rad), pitch(rad), yaw(rad)]
+    # 平移量取自《山猫M20硬件参数》(+0.32028, 0, -0.013)；[待实车点云重合核实] pitch/yaw 倾斜角
+    front_extrinsic: [0.32028, 0.0, -0.013, 0.0, 0.0, 0.0]
+    # 后激光雷达相对 base_link 的 6-DoF 外参 [x(m), y(m), z(m), roll(rad), pitch(rad), yaw(rad)]
+    # 平移量取自《山猫M20硬件参数》(-0.32028, 0, -0.013)；[待实车点云重合核实] pitch/yaw 倾斜角
+    rear_extrinsic: [-0.32028, 0.0, -0.013, 0.0, 0.0, 3.141592653589793]
+
+    # --------------------------------------------------------------------------
+    # 时间同步、点云格式与 QoS 配置 (Sync, XYZIRT & QoS)
+    # --------------------------------------------------------------------------
+    # "sync" = ApproximateTime 严格双雷达同步拼接；"async_latest" = 异步缓存拼接
+    fusion_mode: "sync"
+    sync_queue_size: 20
+    sync_slop_sec: 0.10
+    max_cloud_age_sec: 0.25
+    tf_timeout_sec: 0.05
+    # 输入订阅采用 SensorDataQoS (Best Effort，同时兼容 Best Effort 与 Reliable 驱动)
+    input_qos_best_effort: true
+    # 输出采用 Reliable QoS (同时兼容 SCAN-Planner SensorDataQoS 与 Super-LIO/RViz2)
+    output_qos_reliable: true
+    # 是否保留标准 RoboSense PointXYZIRT 字段 (ring + 逐点 float64 timestamp，供 Super-LIO 去畸变)
+    preserve_xyzirt: true
+
+    # --------------------------------------------------------------------------
+    # 点云滤波与山猫 M20 Pro 机身自遮挡裁剪 (Filtering & Self-Body Cropping)
+    # --------------------------------------------------------------------------
+    # 有效探测距离范围(m) (速腾 RSAIRY 标称 0.2m ~ 60m)
+    min_range: 0.25
+    max_range: 30.0
+    # 剔除机器狗机身与腿部自反射点 (山猫 M20 车身长 0.82m、宽 0.506m，留安全余量)
+    enable_self_filter: true
+    self_filter_min: [-0.46, -0.30, -0.35]
+    self_filter_max: [0.46, 0.30, 0.25]
+    # 体素降采样尺寸(m)：每体素保留首个真实采样点以保护逐点 timestamp/ring；
+    # 若喂给 Super-LIO 希望保留全部原始线束，可按需设为 0.0
+    voxel_leaf_size: 0.05
+
+    # --------------------------------------------------------------------------
+    # 单一 PCD 点云导出与 Step 0 建图累积参数 (PCD Export & Map Accumulation)
+    # --------------------------------------------------------------------------
+    pcd_save_path: "/tmp/scan_planner_maps/building_1f_2f.pcd"
+    enable_map_accumulation: false
+    accumulate_voxel_size: 0.08
+    max_accumulated_points: 2000000

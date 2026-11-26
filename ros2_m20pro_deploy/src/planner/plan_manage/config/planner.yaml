@@ -1,0 +1,145 @@
+# ==============================================================================
+# SCAN-Planner 核心规划器与 3D 滑动窗口占据地图参数配置
+# Core planner, FSM, 3D sliding occupancy map, and B-spline optimization config
+#
+# 说明 / Note:
+#   - 本文件仅补全参数注释，所有数值与原版 SCAN-Planner 保持严格一致。
+#   - 严禁随意调小碰撞膨胀尺寸，真机部署前需根据实车外廓核对双圆柱参数。
+# ==============================================================================
+
+scan_planner_node:
+  ros__parameters:
+    # 是否使用仿真时钟 (/clock) / Use simulated /clock topic
+    use_sim_time: false
+
+    # --------------------------------------------------------------------------
+    # 有限状态机参数 (FSM Parameters)
+    # --------------------------------------------------------------------------
+    # 导航模式 / Navigation mode:
+    #   1 = 手动目标 (订阅 /move_base_simple/goal，适用于 RViz 2D Goal Pose)
+    #   2 = 预设航点序列 (读取下方或外部 YAML 中的 fsm.waypoints)
+    #   3 = 参考路径引导 (订阅 /initial_path，适用于 1F-2F 跨楼层/楼梯路径)
+    fsm.navi_mode: 1
+    # 沿当前轨迹行驶超过该距离(m)后触发局部重规划 / Distance traveled before triggering replan (m)
+    fsm.thresh_replan: 1.0
+    # 距终点小于该距离(m)时不再触发重规划 / Distance to goal within which replanning stops (m)
+    fsm.thresh_no_replan: 0.1
+    # 局部规划前瞻视野距离(m) / Local planning horizon length (m)
+    fsm.planning_horizon: 3.5
+    # 紧急制动轨迹持续时间(s) / Emergency stop trajectory duration (s)
+    fsm.emergency_time: 1.0
+    # 连续重规划失败时是否启用安全悬停/急停保护 / Enable fail-safe emergency stop on replan failures
+    fsm.fail_safe: true
+    # 触发急停前的最大连续重规划失败次数 / Max consecutive replan failures before fail-safe stop
+    fsm.max_replan_fail_count: 1000
+
+    # --------------------------------------------------------------------------
+    # 3D 机器人中心滑动窗口占据地图参数 (3D Sliding GridMap Parameters)
+    # --------------------------------------------------------------------------
+    # 体素地图分辨率(m) / Occupancy voxel resolution (m)
+    grid_map.resolution: 0.05
+    # 滑动窗口 X/Y/Z 三个方向物理尺寸(m) / Sliding map dimensions along X/Y/Z (m)
+    grid_map.sliding_map_size_x: 10.0
+    grid_map.sliding_map_size_y: 10.0
+    grid_map.sliding_map_size_z: 5.0
+    # 单帧传感器局部更新半宽范围 X/Y/Z (m) / Local raycast update half-range X/Y/Z (m)
+    grid_map.local_update_range_x: 5.0
+    grid_map.local_update_range_y: 5.0
+    grid_map.local_update_range_z: 2.5
+    # 是否启用随机器狗移动的滑动窗口地图 / Enable robot-centric sliding map
+    grid_map.map_sliding_en: true
+    # 机身移动超过该阈值(m)时执行体素窗口滚动 / Displacement threshold to shift sliding map (m)
+    grid_map.map_sliding_thresh: 0.2
+    # 四足机身偏航感知双圆柱模型参数(m) / Yaw-aware twin-cylinder footprint model (m):
+    #   double_cylinder_radius = 单个圆柱半径(约等于半宽+安全裕度)
+    #   double_cylinder_offset = 前/后圆柱中心相对机身质心的纵向偏移
+    #   [真机提示] 山猫 M20 车身宽 0.506m、长 0.82m，真机测试前可评估是否调大至 radius=0.30, offset=0.22
+    grid_map.double_cylinder_radius: 0.25
+    grid_map.double_cylinder_offset: 0.18
+    # 机身离地标称高度(m)，Mode 3 参考路径地面高度会自动叠加此值 / Nominal body height above ground (m)
+    grid_map.body_height: 0.4
+    # 障碍物在 Z 轴向上/向下的安全膨胀高度(m) / Vertical obstacle inflation up/down (m)
+    grid_map.obstacles_inflation_z_up: 0.1
+    grid_map.obstacles_inflation_z_down: 0.1
+    # 全局规划参考坐标系名称 / Global reference frame ID (仿真常用 world，真机按 SLAM 设为 map 或 world)
+    grid_map.frame_id: world
+    # 滑动窗口 TF 子坐标系名称 / Sliding map TF child frame ID
+    grid_map.sliding_map_frame_id: sliding_map
+    # 初始地面基准高度(m) / Initial reference ground height (m)
+    grid_map.ground_height: 0.0
+    # 感知传感器类型: lidar (激光雷达点云) 或 depth (深度图) / Perception input type
+    grid_map.sensor_type: lidar
+    # 输入点云是否已处于全局坐标系(world/map):
+    #   true  = 点云已在全局系 (如仿真 /quad_0/cloud 或 SLAM 配准后点云 /ALIGNED_POINTS)
+    #   false = 点云在传感器/机身系 (如 dual_lidar_fusion 输出的 base_link 点云，需结合 sensor_pose 变换)
+    grid_map.cloud_is_world: true
+    # 是否应用 GridMap 内置硬编码外参 (仅原论文单雷达/深度相机用；经 dual_lidar_fusion 对齐至 base_link 后应设为 false)
+    grid_map.need_extrinsic: false
+
+    # --------------------------------------------------------------------------
+    # 深度相机内参与滤波参数 (Depth Camera Intrinsics & Filters，sensor_type=depth 时生效)
+    # --------------------------------------------------------------------------
+    grid_map.cx: 321.04638671875
+    grid_map.cy: 243.44969177246094
+    grid_map.fx: 387.229248046875
+    grid_map.fy: 387.229248046875
+    # 有效深度测距上下限(m) / Valid depth range max/min (m)
+    grid_map.depth_filter_maxdist: 3.0
+    grid_map.depth_filter_mindist: 0.3
+    # 深度图边缘裁剪像素数 / Depth image border crop margin (pixels)
+    grid_map.depth_filter_margin: 1
+    # 深度图尺度缩放因子 (1000 表示 mm -> m) / Depth unit scaling factor
+    grid_map.k_depth_scaling_factor: 1000.0
+    # 深度图像素降采样步长 / Pixel subsampling stride
+    grid_map.skip_pixel: 2
+
+    # --------------------------------------------------------------------------
+    # 概率占据栅格射线追踪参数 (Probabilistic Raycasting Parameters)
+    # --------------------------------------------------------------------------
+    # 击中/穿过体素时的概率更新值 / Hit and miss probabilities
+    grid_map.p_hit: 0.85
+    grid_map.p_miss: 0.30
+    # 占据概率下限与上限截断值 / Min/max probability clamping bounds
+    grid_map.p_min: 0.12
+    grid_map.p_max: 0.98
+    # 判定体素为“已占据”的概率阈值 / Occupancy classification threshold
+    grid_map.p_occ: 0.80
+    # 射线追踪最大有效距离(m) / Max raycasting distance (m)
+    grid_map.max_ray_length: 5.0
+    # RViz 可视化占据栅格时相对当前机身高度的截断上限(m) / Vis height cap above sensor (m)
+    grid_map.vis_height: 0.3
+    # 是否打印占据地图更新耗时 / Print occupancy update timing logs
+    grid_map.show_occ_time: false
+
+    # --------------------------------------------------------------------------
+    # 规划管理器运动学约束 (Planner Manager Kinematic Limits)
+    # --------------------------------------------------------------------------
+    # 最大线速度(m/s)、最大加速度(m/s^2)、最大加加速度(m/s^3) / Max vel, acc, jerk
+    manager.max_vel: 0.75
+    manager.max_acc: 0.5
+    manager.max_jerk: 4.0
+    # B-spline 控制点标称间距(m) / Nominal distance between B-spline control points (m)
+    manager.control_points_distance: 0.2
+    # 动力学可行性重分配时间容差 / Feasibility time-reallocation tolerance
+    manager.feasibility_tolerance: 0.5
+    # 规划管理器局部目标截断视野(m) / Local horizon for manager (m)
+    manager.planning_horizon: 3.5
+
+    # --------------------------------------------------------------------------
+    # B-spline 轨迹优化权重与参数 (B-spline Optimizer Parameters)
+    # --------------------------------------------------------------------------
+    # 平滑项权重 / Smoothness cost weight
+    optimization.lambda_smooth: 1.0
+    # 碰撞避障项权重 / Collision avoidance cost weight
+    optimization.lambda_collision: 1.0
+    # 动力学可行性惩罚权重 / Kinematic feasibility cost weight
+    optimization.lambda_feasibility: 0.1
+    # 贴合参考路径/地面引导权重 / Path fitness cost weight
+    optimization.lambda_fitness: 1.0
+    # 避障安全距离阈值(m) / Safety clearance distance threshold (m)
+    optimization.dist0: 0.2
+    # 优化器最大速度(m/s)与加速度(m/s^2) / Optimizer max vel and acc
+    optimization.max_vel: 0.75
+    optimization.max_acc: 0.5
+    # 均匀 B-spline 阶数 (3 = 三次 B 样条) / Uniform B-spline order (3 = cubic)
+    optimization.order: 3

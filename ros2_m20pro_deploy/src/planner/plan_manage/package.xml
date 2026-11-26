@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>scan_planner</name>
+  <version>0.2.0</version>
+  <description>SCAN-Planner ROS 2 unified navigation package: dual-LiDAR fusion, Step 0 mapping, Step 1 relocalization &amp; navigation, controllers, launch, RViz, and configuration.</description>
+  <maintainer email="iszhouxin@zju.edu.cn">SCAN-Planner maintainers</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>ament_index_cpp</depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <depend>bspline_opt</depend>
+  <depend>eigen</depend>
+  <depend>geometry_msgs</depend>
+  <depend>libpcl-all-dev</depend>
+  <depend>message_filters</depend>
+  <depend>nav_msgs</depend>
+  <depend>path_searching</depend>
+  <depend>pcl_conversions</depend>
+  <depend>plan_env</depend>
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>scan_planner_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>traj_utils</depend>
+  <depend>visualization_msgs</depend>
+
+  <exec_depend>go2_description</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>local_sensing_node</exec_depend>
+  <exec_depend>map_generator</exec_depend>
+  <exec_depend>mockamap</exec_depend>
+  <exec_depend>odom_visualization</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rosbag2</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export><build_type>ament_cmake</build_type></export>
+</package>

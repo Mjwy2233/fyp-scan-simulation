@@ -1,0 +1,78 @@
+# ==============================================================================
+# Step 0：山猫 M20 Pro 手动遥控扫图建图与录包流水线参数配置 (step0_mapping.launch.py)
+# Step 0 manual mapping & rosbag recording config (Lynx M20 Pro + Super-LIO)
+#
+# 主推荐方案（已采纳导师建议）:
+#   - 实车型号：云深处 山猫 M20 Pro（部署于 GOS 10.21.33.104 隔离 Docker 或外接 Humble 主机，严禁动 AOS/NOS）
+#   - 主 SLAM 建图后端：Super-LIO (`Liansheng-Wang/Super-LIO` `ros2` 分支)
+#     优势：S^2 流形在线重力对齐（防止 1F-2F 楼梯地图倾斜）、OctVox+HKNN 适配 ARM RK3588、原生配套重定位。
+#   - 对比/兜底后端：m20_builtin (山猫 M20 Pro NOS 原厂 `sudo drmap mapping`)、fast_lio、elevator_lio。
+# ==============================================================================
+
+step0_mapping:
+  # 运行模式默认值: "sim" (电脑端仿真验证) 或 "real" (山猫 M20 Pro 实车建图)
+  default_mode: "sim"
+
+  # SLAM 建图后端选择 (仅 mode:=real 生效):
+  #   - "super_lio"    : [主方案/导师推荐] Super-LIO ROS 2 (在线重力对齐 + ARM 高效 + 自带重定位)
+  #   - "m20_builtin"  : [对比基线] 山猫 M20 Pro NOS 原厂建图 (`sudo drmap mapping` -> full_cloud.pcd)
+  #   - "fast_lio"     : 开源 FAST-LIO2 (ROS 2 版)
+  #   - "elevator_lio" : 开源 Elevator-LIO (跨楼层非惯性系增强版 FAST-LIO2)
+  #   - "fusion_accum" : 仅使用外部 TF + dual_lidar_fusion 内部点云累积导出 PCD
+  slam_backend: "super_lio"
+
+  # 真机是否启用 dual_lidar_fusion_node:
+  #   - 外接主机用 rslidar_sdk 收前/后两路组播时设为 true（融合后输出 XYZIRT 到 /fused_lidar/points）
+  #   - GOS 主机直接订阅原厂已拼接的 /LIDAR/POINTS 时可设为 false（避免改原厂 send_separately）
+  real_enable_dual_lidar_fusion: true
+
+  # 外部 SLAM ROS 2 包名与启动挂钩 (若已编译在隔离工作空间内则自动拉起，否则打印清晰手动启动提示)
+  slam_launch:
+    super_lio:
+      package: "super_lio"
+      launch_file: "run.launch.py"
+      save_map_service: "/save_map"
+    fast_lio:
+      package: "fast_lio"
+      launch_file: "mapping.launch.py"
+      save_map_service: "/map_save"
+    elevator_lio:
+      package: "elevator_lio"
+      launch_file: "mapping.launch.py"
+      save_map_service: "/map_save"
+
+  # 山猫 M20 Pro 真机传感器话题配置 (上机前用 ros2 topic list 核实)
+  real_topics:
+    # 外接主机 rslidar_sdk 独立前后雷达话题（启用 dual_lidar_fusion 时使用）
+    front_lidar: "/lidar_front/points"
+    rear_lidar: "/lidar_rear/points"
+    fused_lidar: "/fused_lidar/points"
+    # GOS 原厂默认已拼接点云话题 (当 real_enable_dual_lidar_fusion=false 时直连)
+    m20_merged_lidar: "/LIDAR/POINTS"
+    # 山猫 M20 Pro 对外 200Hz IMU 话题 (驱动已对齐至 base_link)
+    imu: "/IMU"
+    # Super-LIO 输出里程计话题 (若改用 fast_lio/elevator_lio 可改为 /LIO/odom_vehicle)
+    slam_odom: "/lio/odom"
+
+  # 地图输出与 rosbag 录制配置 / Map output & rosbag recording settings
+  output:
+    map_dir: "/tmp/scan_planner_maps"
+    map_name: "building_1f_2f"
+    # 强烈建议真机首次扫图开启 rosbag2 录制，方便离线回放调优 Super-LIO 外参与重力对齐参数
+    record_bag: true
+    bag_dir: "/tmp/scan_planner_bags"
+    bag_topics:
+      - "/LIDAR/POINTS"
+      - "/lidar_front/points"
+      - "/lidar_rear/points"
+      - "/fused_lidar/points"
+      - "/IMU"
+      - "/lio/odom"
+      - "/ODOM"
+      - "/tf"
+      - "/tf_static"
+
+  # 建图完成后自动校验阈值 (供 validate_map.py 使用)
+  validation:
+    min_points: 5000
+    min_z_span_m: 1.0    # 1F->2F 实测楼梯通常 > 2.5 m；仿真坡道 map.pcd 约 1.6m+

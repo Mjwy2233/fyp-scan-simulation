@@ -1,0 +1,31 @@
+# ==============================================================================
+# Mode 3 跨层参考路径示例配置 (配套仓库根目录 map.pcd 坡道地图使用)
+# Example 3D reference path for Mode 3 cross-floor demo (paired with map.pcd)
+#
+# 说明 / Note:
+#   - 供 reference_path_publisher.py 读取并发布到 /initial_path (nav_msgs/Path)。
+#   - waypoints 为扁平化 [x0, y0, z0, x1, y1, z1, ...] 数组，至少包含 2 个三维点。
+#   - 这里的 z 值为地面/坡道/楼梯踏面高度，scan_planner_node 会自动叠加
+#     grid_map.body_height (默认 0.4 m) 得到机身目标高度。
+# ==============================================================================
+
+reference_path_publisher:
+  ros__parameters:
+    # 路径所在全局坐标系名称 / Reference coordinate frame ID
+    frame_id: world
+    # 收到首帧 body_pose 后的延迟发布时间(s)，确保规划器完成订阅与初始化 / Delay after first odom (s)
+    publish_delay_sec: 0.5
+    # 地面参考路径三维坐标序列 (沿 map.pcd 坡道从 z=0.10m 上升至 z=1.55m，对应机身终点 z=1.95m)
+    # Ground/route heights. scan_planner adds grid_map.body_height (0.4 m).
+    waypoints:
+      [-5.5, 5.5, 0.10,
+       -5.5, 4.5, 0.30,
+       -5.5, 3.5, 0.40,
+       -5.5, 2.5, 0.55,
+       -5.5, 1.5, 0.70,
+       -5.5, 0.5, 0.85,
+       -5.5, -0.5, 1.00,
+       -5.5, -1.5, 1.20,
+       -5.5, -2.5, 1.40,
+       -5.5, -3.5, 1.55,
+       -5.5, -4.5, 1.55]

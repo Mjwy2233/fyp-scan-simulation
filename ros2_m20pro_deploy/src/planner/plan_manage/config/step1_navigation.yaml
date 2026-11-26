@@ -1,0 +1,103 @@
+# ==============================================================================
+# Step 1：山猫 M20 Pro 先验地图重定位 + RViz 选点导航流水线参数配置 (step1_navigation.launch.py)
+# Step 1 prior-map relocalization & RViz Set-Goal navigation (Lynx M20 Pro + Super-LIO)
+#
+# 核心约束声明 / Hard Constraint Guarantee:
+#   - 严禁改动 SCAN-Planner 原有 3D Sliding Map、双圆柱膨胀、投影 A*、B-spline 优化
+#     及山猫 M20 Pro 底层 RL 运控与步态逻辑。
+#   - 本配置仅做前端双雷达融合、先验地图加载、Super-LIO (或 M20 原厂) 定位接入与速度话题重映射。
+# ==============================================================================
+
+step1_navigation:
+  # 默认运行模式: "sim" (电脑端一键仿真演示) 或 "real" (山猫 M20 Pro 真机导航)
+  default_mode: "sim"
+
+  # --------------------------------------------------------------------------
+  # 先验点云地图加载配置 (Prior PCD Map Loader)
+  # --------------------------------------------------------------------------
+  prior_map:
+    # 空字符串表示：sim 模式自动使用仓库根目录 <ws>/map.pcd；real 模式需传入 Step 0 生成的 PCD 路径
+    pcd_file: ""
+    # 全局地图坐标系名称 (仿真为 world；真机与 Super-LIO 设为 world 或 map，必须与里程计一致)
+    frame_id: "world"
+    publish_rate: 0.2
+    downsample_res: 0.10
+
+  # --------------------------------------------------------------------------
+  # 山猫 M20 Pro 真机定位与硬件接口配置 (Lynx M20 Pro Real-Robot Integration)
+  # --------------------------------------------------------------------------
+  real_robot:
+    # 外接主机用 rslidar_sdk 双路组播时设 true；若在 GOS 直接订阅原厂已拼接的 /LIDAR/POINTS 可设 false
+    enable_dual_lidar_fusion: true
+
+    # 重定位 SLAM 后端选择:
+    #   - "super_lio"            : [主方案/导师推荐] Super-LIO ros2 内置重定位 (relocation.py)
+    #   - "m20_builtin"          : [对比基线/兜底] 山猫 M20 Pro NOS 内置 localization.service (/ODOM + /ALIGNED_POINTS)
+    #   - "fast_lio_localization": 开源 FAST-LIO2 + 全局先验地图重定位
+    #   - "elevator_lio"         : 开源 Elevator-LIO
+    #   - "external"             : 由外部终端/容器独立启动 SLAM，此处仅做话题重映射
+    localization_backend: "super_lio"
+
+    # 外部定位包启动挂钩 (仅当对应包已编译在隔离工作空间内时自动拉起)
+    localization_launch:
+      super_lio:
+        package: "super_lio"
+        launch_file: "relocation.py"
+      fast_lio_localization:
+        package: "fast_lio_localization"
+        launch_file: "localization.launch.py"
+      elevator_lio:
+        package: "elevator_lio"
+        launch_file: "localization.launch.py"
+
+    # 山猫 M20 Pro 真机话题映射 (上机前按实车 `ros2 topic list` 核实)
+    topics:
+      front_lidar: "/lidar_front/points"       # 外接 rslidar_sdk 前雷达 (enable_dual_lidar_fusion=true 时使用)
+      rear_lidar: "/lidar_rear/points"         # 外接 rslidar_sdk 后雷达 (enable_dual_lidar_fusion=true 时使用)
+      fused_lidar: "/fused_lidar/points"       # dual_lidar_fusion 输出的 base_link XYZIRT 点云
+      m20_merged_lidar: "/LIDAR/POINTS"        # GOS 原厂默认已拼接点云 (enable_dual_lidar_fusion=false 时直连)
+      imu: "/IMU"                              # 山猫 M20 Pro 200Hz IMU (已对齐 base_link)
+      # 接入 scan_planner_node 的里程计与局部避障点云:
+      # - Super-LIO 主方案:       body_pose=/lio/odom,        cloud=/fused_lidar/points (或 /LIDAR/POINTS), cloud_is_world=false
+      # - M20 Pro 原厂对比方案:   body_pose=/ODOM,            cloud=/ALIGNED_POINTS,                        cloud_is_world=true
+      # - Elevator-LIO 方案:      body_pose=/LIO/odom_vehicle, cloud=/fused_lidar/points,                   cloud_is_world=false
+      body_pose: "/lio/odom"                   # [待核实] Super-LIO ros2 重定位输出里程计
+      sensor_pose: "/lio/odom"                 # 点云在 base_link 且 need_extrinsic=false 时与 body_pose 一致
+      planner_cloud: "/fused_lidar/points"     # 送入 SCAN-Planner 3D Sliding Map 的实时点云
+      # 标准速度指令输出 (geometry_msgs/Twist: vx, vy, omega)
+      # [山猫 M20 Pro 注意] 原厂速度话题为 /NAV_CMD (drdds/msg/NavCmd, 10Hz)，
+      # 需在外部独立挂接 Twist -> NavCmd 协议桥接节点，并关闭原厂 planner.service 防冲突！
+      cmd_vel: "/cmd_vel"
+
+    # 传入 SCAN-Planner GridMap 的坐标系标志 (规避原论文写死的单雷达外参)
+    planner_frame_id: "world"                  # [待核实] 与 Super-LIO 里程计 frame_id 严格一致 (world 或 map)
+    cloud_is_world: false                      # true=世界系点云(如 /ALIGNED_POINTS)；false=机身系点云(/fused_lidar/points 或 /LIDAR/POINTS)
+    need_extrinsic: false                      # 经 dual_lidar_fusion 或 M20 驱动对齐至 base_link 后必须为 false
+
+    # 山猫 M20 Pro 首次上机安全速度限幅 (注意 M20 敏捷楼梯步态 0x3003 有效起动死区 |vx|>=0.15 m/s)
+    safety_limits:
+      max_vx: 0.45
+      max_vy: 0.20
+      max_vyaw: 0.60
+
+  # --------------------------------------------------------------------------
+  # 导航模式、RViz 选点与 1F-2F 楼梯折返锚点配置 (Goal & Multi-Floor Stairs)
+  # --------------------------------------------------------------------------
+  navigation:
+    sim_navi_mode: 1
+    sim_controller_mode: "closed_loop"
+    sim_enable_dual_lidar_fusion: true
+    sim_init_x: -5.5
+    sim_init_y: 5.5
+    sim_init_z: 0.50
+
+    enable_3d_goal_bridge: true
+    floor_change_z_threshold: 0.8
+    # [待实测录制] 1F -> 2F 折返楼梯关键锚点序列 [x0, y0, z0, ...] (地面高度 m)
+    # 完成 Step 0 扫图后用 keypoint_recorder.py 录制真实 1F 楼梯口 -> 折返平台 -> 2F 楼梯口填入
+    stair_anchors:
+      [-5.5, 4.5, 0.30,
+       -5.5, 2.5, 0.55,
+       -5.5, 0.5, 0.85,
+       -5.5, -1.5, 1.20,
+       -5.5, -3.5, 1.55]
